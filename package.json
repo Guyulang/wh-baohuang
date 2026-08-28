@@ -1,0 +1,12 @@
+{
+  "name": "baohuang-game",
+  "version": "1.0.0",
+  "description": "5人扑克牌联机游戏（自创保皇变体）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

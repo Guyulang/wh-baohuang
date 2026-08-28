@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>保皇 · 5人扑克</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#0f3d2e; --felt:#1a5c43; --felt2:#157a4e;
+  --card:#fff; --card-dark:#f5f2e8; --ink:#1f2430;
+  --gold:#f5b942; --gold2:#e09b1f; --red:#e05252; --purple:#8e5bd8; --blue:#3a7bd5;
+  --txt:#fff; --dim:#c9d8cf; --panel:#0a2e21;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:radial-gradient(ellipse at 50% 20%, #1d6b4d 0%, #0f3d2e 55%, #0a2e21 100%);
+  color:var(--txt); height:100%; overflow:hidden; user-select:none;
+}
+.view{position:absolute; inset:0; display:flex; flex-direction:column;}
+.hidden{display:none !important;}
+
+/* ===== 登录 ===== */
+#loginView{align-items:center; justify-content:center; padding:24px; gap:18px;}
+.logo{font-size:42px; font-weight:800; letter-spacing:6px; color:var(--gold); text-shadow:0 2px 8px rgba(0,0,0,.4);}
+.logo small{display:block; font-size:13px; letter-spacing:3px; color:var(--dim); text-align:center; margin-top:6px; font-weight:400;}
+.card-box{width:100%; max-width:340px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:20px; display:flex; flex-direction:column; gap:12px;}
+.card-box label{font-size:13px; color:var(--dim);}
+.card-box input{width:100%; padding:13px 14px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.25); color:#fff; font-size:16px; outline:none;}
+.card-box input::placeholder{color:#7fa393;}
+.btn{width:100%; padding:14px; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; color:#fff;}
+.btn-gold{background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#4a2f00; text-shadow:none;}
+.btn-green{background:linear-gradient(180deg,#2bb673,#178a50);}
+.btn-ghost{background:rgba(255,255,255,.12); color:#fff;}
+.btn-danger{background:linear-gradient(180deg,#e06b6b,#c03b3b);}
+.btn:active{transform:scale(.97);}
+.row{display:flex; gap:10px;}
+
+/* ===== 等待房间 ===== */
+#waitView{align-items:center; justify-content:flex-start; padding:20px; padding-top:36px; gap:16px;}
+.code-big{font-size:52px; font-weight:900; letter-spacing:8px; color:#fff; background:rgba(0,0,0,.3); padding:10px 26px; border-radius:14px; border:2px dashed var(--gold);}
+.qr{background:#fff; padding:10px; border-radius:12px; width:160px; height:160px;}
+.qr img{width:100%; height:100%;}
+.players-list{width:100%; max-width:340px; display:flex; flex-direction:column; gap:8px;}
+.plist-item{display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.07); border-radius:10px; padding:12px 16px; font-size:15px;}
+.hint{font-size:13px; color:var(--dim); text-align:center;}
+
+/* ===== 游戏 ===== */
+#gameView{padding:8px 8px 0;}
+#topBar{display:flex; justify-content:space-between; align-items:center; padding:4px 8px; font-size:13px; color:var(--dim);}
+#topBar .tag{background:rgba(255,255,255,.12); border-radius:20px; padding:4px 12px; font-weight:700;}
+#topBar .mingbao{background:var(--red); color:#fff;}
+
+#opponents{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:6px 0 4px;}
+.opp{width:calc(25% - 8px); min-width:70px; background:rgba(0,0,0,.22); border-radius:12px; padding:8px 6px; text-align:center; border:2px solid transparent; position:relative;}
+.opp.turn{border-color:var(--gold); box-shadow:0 0 10px rgba(245,185,66,.5);}
+.opp.me{border-color:#4dd18a;}
+.opp .nm{font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.opp .role{font-size:11px; margin-top:2px; min-height:15px;}
+.opp .cnt{font-size:11px; color:var(--dim); margin-top:2px;}
+.opp .role.emperor{color:var(--gold); font-weight:700;}
+.opp .role.guard{color:#b79bff; font-weight:700;}
+.opp .role.commoner{color:#9fd4b8;}
+.opp .role.unknown{color:#667; }
+.opp .badge{position:absolute; top:-7px; right:-5px; background:var(--gold); color:#4a2f00; font-size:10px; font-weight:900; border-radius:8px; padding:1px 6px;}
+.opp.dead{opacity:.45;}
+
+#tableArea{flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:120px; gap:8px; position:relative;}
+.table-cards{display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap; min-height:64px;}
+.table-empty{color:#6f998a; font-size:14px;}
+.log{position:absolute; bottom:4px; left:8px; right:8px; text-align:center; font-size:12px; color:#a8cdbc; height:18px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+
+/* 牌 */
+.card{width:44px; height:62px; border-radius:7px; background:var(--card); color:var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:800; box-shadow:0 2px 4px rgba(0,0,0,.4); position:relative; flex-shrink:0; font-size:18px;}
+.card .s{font-size:10px; font-weight:500; color:#888; line-height:1;}
+.card.small{width:34px; height:48px; font-size:14px;}
+.card.SJ{background:linear-gradient(160deg,#dbe4f0,#aabfe0); color:#1c3f75;}
+.card.BJ{background:linear-gradient(160deg,#fbe3e3,#ef9a9a); color:#9b1c1c;}
+.card.EM{background:linear-gradient(160deg,#ffe9b8,#f5c95a); color:#7a5200;}
+.card.GD{background:linear-gradient(160deg,#eadffb,#c3a6f0); color:#4a2a8a;}
+.card.selected{transform:translateY(-12px); box-shadow:0 0 0 2px var(--gold),0 6px 12px rgba(0,0,0,.5);}
+.card.disabled{opacity:.6;}
+
+#myArea{display:flex; flex-direction:column; gap:6px; padding-bottom:10px;}
+#myInfo{display:flex; justify-content:space-between; align-items:center; padding:0 8px; font-size:13px;}
+#myInfo .role{font-weight:700;}
+#myInfo .role.emperor{color:var(--gold);} #myInfo .role.guard{color:#b79bff;} #myInfo .role.commoner{color:#9fd4b8;}
+#myHand{display:flex; justify-content:center; align-items:flex-end; min-height:76px; padding:6px 0 0; overflow-x:auto; gap:0;}
+#myHand .card{margin-left:-16px;}
+#myHand .card:first-child{margin-left:0;}
+#actions{display:flex; gap:10px; justify-content:center; padding:4px 8px;}
+#actions .btn{width:auto; padding:12px 26px;}
+
+/* 弹窗 */
+#modal{position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:50; padding:24px;}
+.modal-box{background:#123f2c; border:1px solid rgba(255,255,255,.15); border-radius:16px; padding:22px; width:100%; max-width:340px; display:flex; flex-direction:column; gap:14px;}
+.modal-box h3{margin:0; font-size:18px; text-align:center;}
+.modal-box p{margin:0; font-size:14px; color:var(--dim); text-align:center;}
+.score-table{width:100%; border-collapse:collapse; font-size:13px;}
+.score-table th,.score-table td{border:1px solid rgba(255,255,255,.15); padding:6px 8px; text-align:center;}
+.score-table th{background:rgba(255,255,255,.08);}
+.minus{color:#ff8a8a; font-weight:700;} .zero{color:#9fd4b8;}
+
+@media (max-width:360px){
+  .card{width:38px; height:54px; font-size:16px;}
+  .card.small{width:30px; height:42px; font-size:12px;}
+}
+</style>
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="loginView" class="view">
+  <div class="logo">保 皇<small>五人扑克 · 联机版</small></div>
+  <div class="card-box">
+    <label>你的昵称</label>
+    <input id="nameInput" placeholder="输入昵称" maxlength="12">
+    <button class="btn btn-gold" id="btnCreate">创建房间</button>
+    <div class="row">
+      <input id="codeInput" placeholder="输入房间码" inputmode="numeric" style="flex:1;">
+      <button class="btn btn-green" id="btnJoin" style="width:auto; padding:14px 20px;">加入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 等待 -->
+<div id="waitView" class="view hidden">
+  <div class="hint">房间码（发给朋友加入）</div>
+  <div class="code-big" id="waitCode"></div>
+  <div class="qr" id="qrBox"><img id="qrImg" alt="qr"></div>
+  <div class="players-list" id="playersList"></div>
+  <div class="hint" id="waitHint">等待玩家加入…</div>
+  <button class="btn btn-gold hidden" id="btnStart" style="max-width:340px;">开始游戏（5人）</button>
+</div>
+
+<!-- 游戏 -->
+<div id="gameView" class="view hidden">
+  <div id="topBar">
+    <span>房间 <b id="gCode"></b></span>
+    <span class="tag" id="gState">准备中</span>
+    <span>第 <b id="gRound">1</b> 局</span>
+  </div>
+  <div id="opponents"></div>
+  <div id="tableArea">
+    <div class="table-cards" id="tableCards"><span class="table-empty">等待出牌</span></div>
+    <div class="log" id="gLog"></div>
+  </div>
+  <div id="myArea">
+    <div id="myInfo">
+      <span id="myRole">—</span>
+      <span id="myScore">分：0</span>
+    </div>
+    <div id="myHand"></div>
+    <div id="actions">
+      <button class="btn btn-ghost hidden" id="btnPass">过</button>
+      <button class="btn btn-gold hidden" id="btnPlay">出牌</button>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗 -->
+<div id="modal" class="hidden">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<script>
+// ================= 基础 =================
+let ws, myId = null, mySeat = -1;
+let state = null, myHand = [], selected = new Set(), sortedHand = [];
+const NAME = {
+  'SJ':'小王','BJ':'大王','EM':'皇帝','GD':'侍卫',
+  '6':'6','7':'7','8':'8','9':'9','10':'10','J':'J','Q':'Q','K':'K','A':'A','2':'2'
+};
+const ROLE_NAME = { emperor:'👑皇帝', guard:'🛡侍卫', commoner:'平民' };
+const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+function $(id){ return document.getElementById(id); }
+function connect(){
+  ws = new WebSocket(protocol + '//' + location.host);
+  ws.onopen = () => {
+    // 从 URL 参数自动填房间码
+    const code = new URLSearchParams(location.search).get('code');
+    if (code) $('codeInput').value = code;
+  };
+  ws.onmessage = (e) => handle(JSON.parse(e.data));
+  ws.onclose = () => { showModal('连接已断开', '请刷新页面重新连接'); };
+}
+function send(o){ if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+
+// ================= 登录 =================
+let myName = localStorage.getItem('bh_name') || '';
+$('nameInput').value = myName;
+$('btnCreate').onclick = () => { const n = getName(); if(!n) return; send({type:'create_room', name:n}); };
+$('btnJoin').onclick = () => { const n = getName(); if(!n) return; const c = $('codeInput').value.trim(); if(!c){ toast('请输入房间码'); return; } send({type:'join_room', code:c, name:n}); };
+function getName(){
+  const n = $('nameInput').value.trim() || ('玩家' + Math.floor(Math.random()*1000));
+  localStorage.setItem('bh_name', n);
+  return n;
+}
+
+// ================= 消息处理 =================
+function handle(msg){
+  switch(msg.type){
+    case 'joined':
+      myId = msg.playerId;
+      myName = getName();
+      showView('waitView');
+      $('waitCode').textContent = msg.code;
+      $('gCode').textContent = msg.code;
+      genQR(msg.code);
+      break;
+    case 'state': state = msg.state; render(); break;
+    case 'hand': myHand = msg.cards; selected.clear(); renderHand(); break;
+    case 'prompt_emperor_choice': askEmperorChoice(); break;
+    case 'prompt_transfer': askTransfer(msg); break;
+    case 'prompt_reveal': askReveal(); break;
+    case 'prompt_play': onMyTurn(msg); break;
+    case 'round_result': showResult(msg.result); break;
+    case 'error': toast(msg.message); break;
+  }
+}
+
+function showView(id){
+  ['loginView','waitView','gameView'].forEach(v => $(v).classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+
+function genQR(code){
+  const url = location.origin + location.pathname + '?code=' + code;
+  if (window.QRCode) {
+    window.QRCode.toDataURL(url, { width: 140, margin: 1 }, (err, dataUrl) => {
+      if (!err) $('qrImg').src = dataUrl;
+    });
+  }
+  // 也展示链接可复制
+  $('qrBox').title = url;
+}
+
+// ================= 渲染 =================
+function render(){
+  if (!state) return;
+  if (state.state === 'waiting') { renderWait(); return; }
+  showView('gameView');
+  $('gRound').textContent = state.round;
+  $('gState').textContent = stateText();
+  $('gState').className = 'tag' + (stateIsMingbao() ? ' mingbao' : '');
+  renderOpponents();
+  renderTable();
+  renderMyInfo();
+  renderActions();
+  $('gLog').textContent = (state.logs || []).slice(-1)[0] || '';
+}
+function stateText(){
+  const m = { waiting:'等待中', dealing:'发牌中', emperor_choice:'皇帝抉择', transfer:'让皇中', reveal:'亮身份中', playing:'出牌中', over:'已结束' };
+  return m[state.state] || state.state;
+}
+function stateIsMingbao(){
+  // 由后端结算给出，这里仅当已有结果展示
+  return false;
+}
+
+function renderWait(){
+  showView('waitView');
+  const list = $('playersList');
+  list.innerHTML = state.players.map(p => {
+    const host = state.players[0] && state.players[0].id === p.id;
+    return `<div class="plist-item"><span>${escapeHtml(p.name)}${host?' <span style="color:var(--gold)">·房主</span>':''}</span><span style="color:var(--dim)">${p.id===myId?'我':''}</span></div>`;
+  }).join('');
+  const isHost = state.players[0] && state.players[0].id === myId;
+  $('btnStart').classList.toggle('hidden', !isHost);
+  $('btnStart').disabled = state.players.length < 5;
+  $('waitHint').textContent = state.players.length < 5 ? `等待玩家加入…（${state.players.length}/5）` : '人齐了，房主点开始！';
+}
+$('btnStart').onclick = () => send({type:'start_game'});
+
+function seatOf(pid){
+  const me = state.players.find(p => p.id === myId);
+  const target = state.players.find(p => p.id === pid);
+  if (!me || !target) return 0;
+  return (target.seat - me.seat + 5) % 5; // 相对我的位置
+}
+function mySeatIdx(){
+  return state.players.findIndex(p => p.id === myId);
+}
+function renderOpponents(){
+  const me = state.players.find(p => p.id === myId);
+  if (!me) return;
+  const myIdx = me.seat;
+  const others = state.players.filter(p => p.id !== myId)
+    .sort((a,b) => (a.seat - myIdx + 5) % 5 - (b.seat - myIdx + 5) % 5);
+  const box = $('opponents');
+  box.innerHTML = others.map(p => {
+    const rel = (p.seat - myIdx + 5) % 5; // 1下家 2对面 3上家? 按顺序
+    const dead = p.alive === false;
+    const roleHtml = roleLabel(p);
+    const revealed = p.revealed;
+    const turn = state.currentPlayer === p.seat;
+    return `<div class="opp ${turn?'turn':''} ${dead?'dead':''}">
+      ${turn?'<span class="badge">出牌</span>':''}
+      <div class="nm">${escapeHtml(p.name)}</div>
+      <div class="role ${p.role}">${roleHtml}</div>
+      <div class="cnt">${dead?'出完':('剩 '+p.handCount+' 张')}</div>
+    </div>`;
+  }).join('');
+}
+function roleLabel(p){
+  if (!p.role) return '—';
+  if (p.seat === state.emperorIdx && !state.duoHuang) return '👑皇帝';
+  if (p.seat === state.guardIdx) return p.revealed ? '🛡侍卫' : (state.state==='over' ? '🛡侍卫' : '❓');
+  if (state.duoHuang && p.seat === state.emperorIdx) return '👑独皇';
+  // 平民
+  if (p.revealed) return '⚔平民';
+  if (state.state === 'over') return '⚔平民';
+  return '❓';
+}
+
+function renderTable(){
+  const box = $('tableCards');
+  if (state.tableCards && state.tableCards.length > 0) {
+    const who = state.players.find(p => p.seat === state.tablePlayer);
+    box.innerHTML = `<div style="font-size:11px;color:var(--dim);width:100%;text-align:center;">${who?escapeHtml(who.name):''} 出</div>` +
+      state.tableCards.map(c => cardHtml(c, 'small')).join('');
+  } else {
+    box.innerHTML = '<span class="table-empty">等待出牌</span>';
+  }
+}
+function renderMyInfo(){
+  const me = state.players.find(p => p.id === myId);
+  if (!me) return;
+  $('myScore').textContent = '分：' + me.score;
+  const r = me.role;
+  $('myRole').textContent = r ? (ROLE_NAME[r] || r) : '—';
+  $('myRole').className = 'role ' + (r||'');
+}
+function renderHand(){
+  const box = $('myHand');
+  sortedHand = myHand.slice().sort((a,b)=>rankOf(b)-rankOf(a));
+  box.innerHTML = sortedHand.map((c,i) => {
+    const sel = selected.has(i) ? 'selected' : '';
+    return `<div class="card ${c} ${sel}" data-i="${i}">${cardHtml(c)}</div>`;
+  }).join('');
+  box.querySelectorAll('.card').forEach(el => {
+    el.onclick = () => {
+      const i = parseInt(el.dataset.i);
+      if (selected.has(i)) selected.delete(i); else selected.add(i);
+      renderHand();
+    };
+  });
+}
+function cardHtml(c, size){
+  const disp = NAME[c] || c;
+  if (c === 'SJ' || c === 'BJ' || c === 'EM' || c === 'GD') return `<span class="s">${disp}</span>`;
+  return disp;
+}
+function rankOf(c){
+  const r = { '6':1,'7':2,'8':3,'9':4,'10':5,'J':6,'Q':7,'K':8,'A':9,'2':10,'SJ':11,'BJ':12,'EM':14,'GD':15 };
+  return r[c] || 0;
+}
+function renderActions(){
+  const me = state.players.find(p => p.id === myId);
+  const myTurn = me && state.state === 'playing' && state.currentPlayer === me.seat;
+  const canPass = myTurn && state.tableCards && state.tableCards.length > 0;
+  $('btnPlay').classList.toggle('hidden', !myTurn);
+  $('btnPass').classList.toggle('hidden', !canPass);
+}
+
+// ================= 交互 =================
+function askEmperorChoice(){
+  $('modalBox').innerHTML = `<h3>你是皇帝 👑</h3><p>是否发起让皇？</p>
+    <button class="btn btn-gold" id="mTransfer">让皇</button>
+    <button class="btn btn-ghost" id="mNoTransfer">不让，直接开打</button>`;
+  showModal();
+  $('mTransfer').onclick = () => { hideModal(); send({type:'emperor_choice', transfer:true}); };
+  $('mNoTransfer').onclick = () => { hideModal(); send({type:'emperor_choice', transfer:false}); };
+}
+function askTransfer(msg){
+  const me = state.players.find(p => p.id === myId);
+  const isEmperor = me && me.seat === state.emperorIdx;
+  if (isEmperor) {
+    $('modalBox').innerHTML = `<h3>让皇中</h3><p>正在询问其他玩家是否接受让皇…</p>`;
+    showModal();
+    return;
+  }
+  if (msg.to !== mySeatIdx()) { hideModal(); return; }
+  $('modalBox').innerHTML = `<h3>让皇</h3><p>${escapeHtml(msg.name)} 想把皇帝让给你，接受吗？</p>
+    <button class="btn btn-gold" id="mAccept">接受，当皇帝</button>
+    <button class="btn btn-ghost" id="mReject">不要</button>`;
+  showModal();
+  $('mAccept').onclick = () => { hideModal(); send({type:'transfer_decision', accept:true}); };
+  $('mReject').onclick = () => { hideModal(); send({type:'transfer_decision', accept:false}); };
+}
+function askReveal(){
+  const me = state.players.find(p => p.id === myId);
+  if (!me) return;
+  if (me.seat === state.emperorIdx) { hideModal(); return; } // 皇帝已亮
+  const role = ROLE_NAME[me.role] || '平民';
+  $('modalBox').innerHTML = `<h3>亮身份</h3><p>你的身份是 <b style="color:var(--gold)">${role}</b></p>
+    <p style="font-size:12px;">亮身份会触发明保（输方扣分翻倍）</p>
+    <button class="btn btn-gold" id="mReveal">亮身份</button>
+    <button class="btn btn-ghost" id="mHide">不亮</button>`;
+  showModal();
+  $('mReveal').onclick = () => { hideModal(); send({type:'reveal_decision', reveal:true}); };
+  $('mHide').onclick = () => { hideModal(); send({type:'reveal_decision', reveal:false}); };
+}
+function onMyTurn(msg){
+  const me = state.players.find(p => p.id === myId);
+  if (!me) return;
+  const canPass = msg.canPass;
+  $('btnPass').classList.toggle('hidden', !canPass);
+  $('btnPlay').classList.remove('hidden');
+  // 高亮自己
+}
+$('btnPlay').onclick = () => {
+  const cards = [...selected].sort((a,b)=>a-b).map(i => sortedHand[i]);
+  if (cards.length === 0) { toast('请先选牌'); return; }
+  send({type:'play', cards: cards});
+  selected.clear();
+};
+$('btnPass').onclick = () => {
+  send({type:'pass'});
+  selected.clear();
+};
+
+function showResult(result){
+  let html = '';
+  if (result.void) {
+    html = `<h3>本局作废</h3><p>${result.message}</p>`;
+  } else {
+    const rankRows = result.rank.map(r => `<tr><td>${r.rank}</td><td>${escapeHtml(r.name)}</td><td>${r.forced?'被逼死':'出完'}</td></tr>`).join('');
+    const deductRows = result.deduct.map((d,i) => {
+      const p = state.players[i];
+      return `<tr><td>${escapeHtml(p.name)}</td><td class="${d>0?'minus':'zero'}">${d>0?'-'+d:'0'}</td><td>${p.score}</td></tr>`;
+    }).join('');
+    html = `<h3>${result.message}</h3>
+      <table class="score-table"><tr><th>名次</th><th>玩家</th><th>状态</th></tr>${rankRows}</table>
+      <table class="score-table"><tr><th>玩家</th><th>本局扣分</th><th>总分</th></tr>${deductRows}</table>`;
+  }
+  $('modalBox').innerHTML = html + `<button class="btn btn-gold" id="mOk">确定</button>`;
+  showModal();
+  $('mOk').onclick = () => hideModal();
+}
+
+// ================= 工具 =================
+function showModal(){ $('modal').classList.remove('hidden'); }
+function hideModal(){ $('modal').classList.add('hidden'); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+let toastTimer;
+function toast(t){
+  const m = $('modalBox');
+  // 用轻提示
+  let el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:18%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:99;';
+  el.textContent = t;
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.remove(), 1600);
+}
+
+connect();
+</script>
+</body>
+</html>
