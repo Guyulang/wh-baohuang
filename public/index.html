@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>保皇 · 5人扑克</title>
+<title>WH保皇 · 5人扑克</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
 :root{
@@ -16,7 +16,7 @@
 html,body{margin:0;padding:0;height:100%;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-  background:radial-gradient(ellipse at 50% 20%, #1d6b4d 0%, #0f3d2e 55%, #0a2e21 100%);
+  background:#0f3d2e url('images/bg.png') center/cover no-repeat;
   color:var(--txt); height:100%; overflow:hidden; user-select:none;
 }
 .view{position:absolute; inset:0; display:flex; flex-direction:column;}
@@ -58,6 +58,8 @@ body{
 .opp.turn{border-color:var(--gold); box-shadow:0 0 10px rgba(245,185,66,.5);}
 .opp.me{border-color:#4dd18a;}
 .opp .nm{font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.avatar{width:40px; height:40px; border-radius:10px; background:#fff; color:#111; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:900; letter-spacing:1px; flex-shrink:0; margin:0 auto 4px; box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.avatar.big{width:48px; height:48px; font-size:18px;}
 .opp .role{font-size:11px; margin-top:2px; min-height:15px;}
 .opp .cnt{font-size:11px; color:var(--dim); margin-top:2px;}
 .opp .role.emperor{color:var(--gold); font-weight:700;}
@@ -113,7 +115,7 @@ body{
 
 <!-- 登录 -->
 <div id="loginView" class="view">
-  <div class="logo">保 皇<small>五人扑克 · 联机版</small></div>
+  <div class="logo">WH<span style="color:#fff">保皇</span><small>五人扑克 · 联机版</small></div>
   <div class="card-box">
     <label>你的昵称</label>
     <input id="nameInput" placeholder="输入昵称" maxlength="12">
@@ -149,7 +151,10 @@ body{
   </div>
   <div id="myArea">
     <div id="myInfo">
-      <span id="myRole">—</span>
+      <span style="display:flex;align-items:center;">
+        <span class="avatar" style="margin:0 8px 0 0">帅逼</span>
+        <span id="myRole">—</span>
+      </span>
       <span id="myScore">分：0</span>
     </div>
     <div id="myHand"></div>
@@ -266,7 +271,7 @@ function renderWait(){
   const list = $('playersList');
   list.innerHTML = state.players.map(p => {
     const host = state.players[0] && state.players[0].id === p.id;
-    return `<div class="plist-item"><span>${escapeHtml(p.name)}${host?' <span style="color:var(--gold)">·房主</span>':''}</span><span style="color:var(--dim)">${p.id===myId?'我':''}</span></div>`;
+    return `<div class="plist-item"><div class="avatar" style="margin:0 10px 0 0">帅逼</div><span style="flex:1">${escapeHtml(p.name)}${host?' <span style="color:var(--gold)">·房主</span>':''}</span><span style="color:var(--dim)">${p.id===myId?'我':''}</span></div>`;
   }).join('');
   const isHost = state.players[0] && state.players[0].id === myId;
   $('btnStart').classList.toggle('hidden', !isHost);
@@ -299,6 +304,7 @@ function renderOpponents(){
     const turn = state.currentPlayer === p.seat;
     return `<div class="opp ${turn?'turn':''} ${dead?'dead':''}">
       ${turn?'<span class="badge">出牌</span>':''}
+      <div class="avatar">帅逼</div>
       <div class="nm">${escapeHtml(p.name)}</div>
       <div class="role ${p.role}">${roleHtml}</div>
       <div class="cnt">${dead?'出完':('剩 '+p.handCount+' 张')}</div>
